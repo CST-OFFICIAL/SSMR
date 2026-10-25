@@ -52,6 +52,7 @@ class SoilScanCreate(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source: DataSource
     location: Location | None = None
+    agricultural_context: AgriculturalContext | None = None
     soil_moisture: Measurement = Field(default_factory=lambda: Measurement(unit="%"))
     soil_temperature: Measurement = Field(default_factory=lambda: Measurement(unit="°C"))
     ph: Measurement = Field(default_factory=lambda: Measurement(unit="pH"))
