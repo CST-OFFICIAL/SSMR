@@ -41,6 +41,12 @@ class Location(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
 
+class AgriculturalContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    region: str | None = Field(default=None, min_length=1, max_length=120)
+    season: str | None = Field(default=None, min_length=1, max_length=80)
+    water_availability: str | None = Field(default=None, min_length=1, max_length=80)
+
 class SoilScanCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
