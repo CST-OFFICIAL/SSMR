@@ -4,7 +4,7 @@ FastAPI backend for validated soil-scan ingestion, SQLite persistence, data-qual
 
 ## Status
 
-The backend MVP is merged into `main`. Follow-up tests, CI, and container setup are under review in [PR #3](https://github.com/CST-OFFICIAL/SSMR/pull/3). Do not assume the tests pass until the GitHub Actions run finishes successfully. Crop suitability recommendations remain disabled unless documented, applicable agricultural reference data and decision rules are supplied.
+The backend MVP, batch scan ingestion, expanded tests, CI, Docker setup, and integration documentation are merged into `main`. GitHub Actions run 27 completed successfully, including the backend test suite and Docker image build. Crop suitability recommendations remain disabled unless documented, applicable agricultural reference data and decision rules are supplied.
 
 ## Run with Python
 
