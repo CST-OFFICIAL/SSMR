@@ -1,13 +1,34 @@
 # Smart Soil Monitoring Robot — Backend
 
-FastAPI backend for validated soil-scan ingestion, SQLite persistence, data-quality reporting, and explainable analysis.
+FastAPI backend for validated soil-scan ingestion, SQLite persistence, data-quality reporting, weather lookup, and explainable analysis.
 
 ## Status
 
-This backend is being built incrementally. The initial implementation will support laptop-only development and clearly labelled simulated readings. Crop suitability recommendations will remain explicitly unavailable until documented, applicable agricultural reference data and decision rules are supplied.
+The backend MVP is merged into `main`. Follow-up tests, CI, and container setup are under review in [PR #3](https://github.com/CST-OFFICIAL/SSMR/pull/3). Do not assume the tests pass until the GitHub Actions run finishes successfully. Crop suitability recommendations remain disabled unless documented, applicable agricultural reference data and decision rules are supplied.
 
-## Development
+## Run with Python
 
-Use Python 3.11 or newer. Create a virtual environment, install `requirements.txt`, then run `uvicorn app.main:app --reload` from this directory. API documentation is available at `/docs` while the server is running.
+Use Python 3.11 or newer.
 
-See `docs/API.md` for the current API contract. Physical sensor integration and the frontend are owned by other agents.
+```bash
+python -m venv .venv
+# Linux/macOS: source .venv/bin/activate
+# Windows PowerShell: .venv\\Scripts\\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pytest -q
+uvicorn app.main:app --reload
+```
+
+Run these commands from the `backend/` directory. API docs are available at `http://127.0.0.1:8000/docs`.
+
+## Run with Docker Compose
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+The backend will be available at `http://127.0.0.1:8000`. SQLite data persists in the `ssmr_data` named volume.
+
+See [API contract](docs/API.md) and [cross-agent integration contract](docs/INTEGRATION_CONTRACT.md). Physical sensor integration and the frontend are owned by the other agents.
