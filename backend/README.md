@@ -4,7 +4,7 @@ FastAPI backend for validated soil-scan ingestion, SQLite persistence, data-qual
 
 ## Status
 
-The backend MVP, batch scan ingestion, expanded tests, CI, Docker setup, and integration documentation are merged into `main`. GitHub Actions run 27 completed successfully, including the backend test suite and Docker image build. Crop suitability recommendations remain disabled unless documented, applicable agricultural reference data and decision rules are supplied.
+The backend MVP, batch scan ingestion, expanded tests, CI, Docker setup, and integration documentation are merged into `main`. PR #5 adds optional SQLite-backed idempotency keys for safe batch retries. GitHub Actions runs 27 and 31 completed successfully, including the backend test suite and Docker image build. Crop suitability recommendations remain disabled unless documented, applicable agricultural reference data and decision rules are supplied.
 
 ## Run with Python
 
