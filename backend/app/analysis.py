@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from typing import Any
-from .schemas import AnalysisResult, MeasurementStatus, SoilScan\nfrom .crop_rules import rank_crops
+
+from .schemas import AnalysisResult, MeasurementStatus, SoilScan
+from .crop_rules import rank_crops
 
 
 def analyze_scan(scan: SoilScan) -> AnalysisResult:
-    """Report measurement quality only; do not imply unsupported agronomic conclusions."""
+    """Report measurement quality and apply only explicitly configured, cited crop rules."""
     warnings = list(scan.warnings)
     findings: list[dict[str, Any]] = []
     measurements = {
@@ -16,9 +18,9 @@ def analyze_scan(scan: SoilScan) -> AnalysisResult:
     }
     usable = 0
     for name, measurement in measurements.items():
-        status = measurement.status.value
-        if measurement.value is None and status == MeasurementStatus.valid.value:
-            status = MeasurementStatus.invalid.value
+        measurement_status = measurement.status.value
+        if measurement.value is None and measurement_status == MeasurementStatus.valid.value:
+            measurement_status = MeasurementStatus.invalid.value
             warnings.append(f"{name}: marked valid but no numeric value was supplied")
         if measurement.value is not None and measurement.status != MeasurementStatus.valid:
             warnings.append(f"{name}: numeric value is present but status is {measurement.status.value}")
@@ -30,7 +32,7 @@ def analyze_scan(scan: SoilScan) -> AnalysisResult:
             "measurement": name,
             "value": measurement.value,
             "unit": measurement.unit,
-            "status": status,
+            "status": measurement_status,
             "calibrated": measurement.calibrated,
             "observed_at": measurement.observed_at.isoformat() if measurement.observed_at else None,
         })
@@ -46,16 +48,25 @@ def analyze_scan(scan: SoilScan) -> AnalysisResult:
     else:
         quality = "measurements_present_calibration_unverified"
 
+    context = scan.agricultural_context
+    crop_result = rank_crops(
+        scan,
+        region=context.region if context else None,
+        season=context.season if context else None,
+        water_availability=context.water_availability if context else None,
+    )
+    warnings.extend(crop_result["warnings"])
     return AnalysisResult(
         scan_id=scan.id,
         source=scan.source,
         data_quality=quality,
         measurement_findings=findings,
         warnings=list(dict.fromkeys(warnings)),
-        crop_recommendations=[],
-        crop_recommendations_status="unavailable_reference_data_required",
-        explanation=("This result summarizes measurement availability and quality only. "
-                     "Crop recommendations are withheld until region-, season- and crop-specific "
-                     "agricultural references and validated decision rules are added. "
-                     "pH and electrical conductivity do not establish N-P-K nutrient levels."),
+        crop_recommendations=crop_result["items"],
+        crop_recommendations_status=crop_result["status"],
+        explanation=(
+            "This result reports measurement quality and applies only explicitly configured, cited crop rules. "
+            "A rule match is not a yield prediction or guarantee of agronomic suitability. "
+            "pH and electrical conductivity do not establish N-P-K nutrient levels."
+        ),
     )
