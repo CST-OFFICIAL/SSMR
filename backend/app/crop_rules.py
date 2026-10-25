@@ -15,6 +15,14 @@ class Threshold(BaseModel):
     maximum: float | None = None
     unit: str = Field(min_length=1, max_length=24)
 
+    @model_validator(mode="after")
+    def ordered_bounds(self):
+        if self.minimum is not None and self.maximum is not None and self.minimum > self.maximum:
+            raise ValueError("threshold minimum cannot exceed maximum")
+        if self.minimum is None and self.maximum is None:
+            raise ValueError("threshold must define a minimum or maximum")
+        return self
+
 class CropRule(BaseModel):
     """A threshold must be transcribed from a cited source applicable to its context."""
     model_config = ConfigDict(extra="forbid")
@@ -26,6 +34,21 @@ class CropRule(BaseModel):
     source_title: str = Field(min_length=1, max_length=300)
     source_url: str = Field(min_length=8, max_length=1000)
     applicability_notes: str = Field(min_length=10, max_length=2000)
+
+    @field_validator("source_url")
+    @classmethod
+    def require_web_reference(cls, value: str) -> str:
+        if not value.startswith(("https://", "http://")):
+            raise ValueError("source_url must be an HTTP(S) reference")
+        return value
+
+    @model_validator(mode="after")
+    def supported_measurements_only(self):
+        supported = {"soil_moisture", "soil_temperature", "ph", "ec"}
+        unknown = set(self.thresholds) - supported
+        if unknown:
+            raise ValueError(f"unsupported measurement threshold(s): {sorted(unknown)}")
+        return self
 
 
 def load_rules(path: str | None = None) -> tuple[list[CropRule], list[str]]:
@@ -72,6 +95,10 @@ def rank_crops(scan: SoilScan, *, region: str | None, season: str | None,
             if measurement is None or measurement.value is None or measurement.status.value != "valid":
                 eligible = False
                 reasons.append(f"Missing or invalid required measurement: {name}.")
+                continue
+            if measurement.calibrated is not True:
+                eligible = False
+                reasons.append(f"{name} is not confirmed calibrated.")
                 continue
             if measurement.unit.casefold() != threshold.unit.casefold():
                 eligible = False
