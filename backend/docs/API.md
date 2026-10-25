@@ -1,4 +1,4 @@
-# Backend API contract (v0.2)
+# Backend API contract (v0.3)
 
 Base URL during local development: `http://127.0.0.1:8000`.
 
@@ -20,9 +20,23 @@ Interactive OpenAPI documentation is served at `/docs` when the app is running.
 
 Suggested units are `%`, `°C`, `pH`, and `mS/cm`; the API records the supplied unit and does not silently convert it. The robot agent must confirm exact sensor output units before hardware integration.
 
-## Batch ingestion
+## Batch ingestion and retries
 
-Use batch ingestion when the robot has buffered readings while offline and later reconnects. Send a JSON array of 1–50 regular scan payloads to `POST /api/v1/scans/batch`. Each payload is validated before the handler runs, and database writes are transactional. A batch does not yet provide client-supplied idempotency keys: clients should not assume retrying the same batch is deduplicated, because each accepted scan receives a server-generated ID.
+Use batch ingestion when the robot has buffered readings while offline and later reconnects. Send a JSON array of 1–50 regular scan payloads to `POST /api/v1/scans/batch`.
+
+For safe retries, include an `Idempotency-Key` header (8–128 characters), unique to that logical batch, for example:
+
+```http
+Idempotency-Key: robot-01-batch-0001
+```
+
+- First accepted request stores the batch and its response atomically; response header `Idempotency-Replayed: false`.
+- Repeating the same key with the same payload returns the original response and IDs without creating duplicate scans; response header `Idempotency-Replayed: true`.
+- Reusing the same key with a different payload returns HTTP `409 Conflict`.
+- Requests without the header remain supported, but retrying them can create duplicate scans.
+- Batch size must be 1–50. Invalid payloads return HTTP `422`; database errors roll back the batch.
+
+Idempotency records are stored in SQLite, so they survive API process restarts as long as the same database is retained.
 
 ## Analysis limitations
 
