@@ -21,7 +21,7 @@ def test_scan_lifecycle(tmp_path, monkeypatch):
     scan = response.json()
     assert scan["source"] == "simulated"
     assert scan["id"]
-    assert scan["received_at"].endswith("Z")
+    assert __import__("datetime").datetime.fromisoformat(scan["received_at"].replace("Z", "+00:00")).tzinfo is not None
 
     history = client.get("/api/v1/scans")
     assert history.status_code == 200
