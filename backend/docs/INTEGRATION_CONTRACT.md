@@ -1,6 +1,6 @@
-# SSMR cross-agent integration contract (v0.2)
+# SSMR cross-agent integration contract (v0.3)
 
-This document is the hand-off contract between the Raspberry Pi/robot agent, backend agent, and frontend agent. It describes the backend API as implemented on the development branch; it does not claim physical sensors have been integrated or calibrated.
+This document is the hand-off contract between the Raspberry Pi/robot agent, backend agent, and frontend agent. It describes the backend API on the current development branch; it does not claim physical sensors have been integrated or calibrated.
 
 ## Ownership boundaries
 
@@ -63,7 +63,19 @@ Example:
 ]
 ```
 
-Response: HTTP `201` with `{"items": [...], "count": 2}`. The database transaction writes the batch atomically. An invalid item yields HTTP `422` before writing; a database failure rolls back the entire batch. The endpoint currently has no client-supplied idempotency key, so clients must not assume retries are deduplicated.
+For safe retries, include a unique `Idempotency-Key` header (8–128 characters), for example:
+
+```http
+Idempotency-Key: robot-01-batch-0001
+```
+
+- First accepted request returns `201` and `Idempotency-Replayed: false`.
+- Repeating the same key with the same payload returns the original scan IDs and response without duplicate database rows; header is `Idempotency-Replayed: true`.
+- Reusing a key with a different payload returns HTTP `409 Conflict`.
+- Without the header, retries can create duplicate scans.
+- A batch must contain 1–50 items. Invalid payloads return `422`; database errors roll back the whole batch.
+
+The idempotency key and original response are stored in the same SQLite transaction as the scans, so retry protection survives API process restarts while that database is retained.
 
 ## Measurement rules
 
@@ -83,7 +95,7 @@ The robot agent must document the exact sensor model, raw output, conversion, un
 - `GET /api/v1/scans/{id}/analysis` — measurement findings, warnings, quality status, and crop recommendation status.
 - `GET /api/v1/weather?latitude={lat}&longitude={lon}` — current weather; check the returned availability/staleness fields before displaying it.
 
-Use `id` as the stable scan identifier. Handle HTTP `404` for missing scans, HTTP `422` for invalid payloads, and weather responses that explicitly report unavailable data. Do not present simulated readings as physical measurements.
+Use `id` as the stable scan identifier. Handle HTTP `404` for missing scans, HTTP `422` for invalid payloads, HTTP `409` for idempotency-key conflicts, and weather responses that explicitly report unavailable data. Do not present simulated readings as physical measurements.
 
 ## Crop recommendation safety
 
