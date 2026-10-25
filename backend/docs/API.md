@@ -6,6 +6,7 @@ Base URL during local development: `http://127.0.0.1:8000`.
 
 - `GET /health` — process health check.
 - `POST /api/v1/scans` — validate and persist one soil scan; returns `201` and the scan with generated `id` and `received_at`.
+- `GET /api/v1/weather?latitude=26.75&longitude=94.63` — fetch current conditions from Open-Meteo; reports `available`, `stale`, or `unavailable` and never fabricates values.
 - `GET /api/v1/scans?limit=50&offset=0` — newest-first scan history with `items`, `total`, `limit`, and `offset`.
 - `GET /api/v1/scans/{scan_id}` — one stored scan, or `404`.
 - `GET /api/v1/scans/{scan_id}/analysis` — data-quality findings and limitations, or `404`.
@@ -25,6 +26,7 @@ Analysis currently evaluates availability/status/calibration flags and emits war
 ## Configuration
 
 - `SSMR_DATABASE_PATH` — optional SQLite file path. Defaults to `backend/data/soil_scans.sqlite3`.
+- Weather requests use a 5-second timeout. `stale` is true when the provider timestamp is more than two hours old or more than 15 minutes in the future. A failed request returns an explicit unavailable response.
 - `SSMR_CORS_ORIGINS` — comma-separated browser origins. Defaults to local Vite origins `http://localhost:5173,http://127.0.0.1:5173`.
 
 No API keys are required for the current implementation. SQLite is intended for the prototype; back up the database file if the records matter.
