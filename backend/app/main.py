@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from uuid import uuid4
+import os
 
 from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,12 +15,18 @@ from .weather import get_weather
 
 app = FastAPI(
     title="Smart Soil Monitoring Robot API",
-    version="0.1.0",
+    version="0.2.0",
     description="Laptop-first API for soil scans, scan history, and transparent measurement-quality analysis.",
 )
 # CORS origins are configurable; localhost defaults support laptop development.
-import os
-_origins = [origin.strip() for origin in os.getenv("SSMR_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if origin.strip()]
+_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "SSMR_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
@@ -28,13 +35,16 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+
 @app.on_event("startup")
 def startup() -> None:
     database.init_db()
 
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "ssmr-backend"}
+
 
 @app.post("/api/v1/scans", response_model=SoilScan, status_code=status.HTTP_201_CREATED)
 def create_scan(payload: SoilScanCreate) -> SoilScan:
@@ -53,10 +63,45 @@ def create_scan(payload: SoilScanCreate) -> SoilScan:
         raise HTTPException(status_code=500, detail="Could not persist scan") from exc
     return scan
 
+
+@app.post("/api/v1/scans/batch", status_code=status.HTTP_201_CREATED)
+def create_scans_batch(payloads: list[SoilScanCreate]) -> dict[str, object]:
+    """Atomically ingest 1–50 buffered scans from a device or offline queue."""
+    if not 1 <= len(payloads) <= 50:
+        raise HTTPException(status_code=422, detail="Batch must contain between 1 and 50 scans")
+
+    received_at = datetime.now(timezone.utc)
+    scans = [
+        SoilScan(**payload.model_dump(), id=str(uuid4()), received_at=received_at)
+        for payload in payloads
+    ]
+    records = [
+        {
+            "id": scan.id,
+            "timestamp": scan.timestamp.isoformat(),
+            "received_at": scan.received_at.isoformat(),
+            "source": scan.source.value,
+            "payload": scan.model_dump(mode="json"),
+        }
+        for scan in scans
+    ]
+    try:
+        database.insert_scans(records)
+    except Exception as exc:
+        # The transaction in insert_scans rolls back the entire batch on failure.
+        raise HTTPException(status_code=500, detail="Could not persist scan batch") from exc
+
+    return {"items": scans, "count": len(scans)}
+
+
 @app.get("/api/v1/weather")
-async def weather_for_location(latitude: float = Query(ge=-90, le=90), longitude: float = Query(ge=-180, le=180)) -> dict[str, object]:
+async def weather_for_location(
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+) -> dict[str, object]:
     """Fetch current conditions from Open-Meteo; unavailable data stays explicitly unavailable."""
     return await get_weather(latitude, longitude)
+
 
 @app.get("/api/v1/scans")
 def scan_history(
@@ -65,6 +110,7 @@ def scan_history(
 ) -> dict[str, object]:
     scans, total = database.list_scans(limit=limit, offset=offset)
     return {"items": scans, "total": total, "limit": limit, "offset": offset}
+
 
 @app.get("/api/v1/scans/{scan_id}", response_model=SoilScan)
 def get_scan(scan_id: str) -> SoilScan:
@@ -75,6 +121,7 @@ def get_scan(scan_id: str) -> SoilScan:
         return SoilScan.model_validate(record)
     except ValidationError as exc:
         raise HTTPException(status_code=500, detail="Stored scan failed schema validation") from exc
+
 
 @app.get("/api/v1/scans/{scan_id}/analysis", response_model=AnalysisResult)
 def get_scan_analysis(scan_id: str) -> AnalysisResult:

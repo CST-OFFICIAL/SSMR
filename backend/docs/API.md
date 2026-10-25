@@ -1,4 +1,4 @@
-# Backend API contract (v0.1)
+# Backend API contract (v0.2)
 
 Base URL during local development: `http://127.0.0.1:8000`.
 
@@ -6,6 +6,7 @@ Base URL during local development: `http://127.0.0.1:8000`.
 
 - `GET /health` — process health check.
 - `POST /api/v1/scans` — validate and persist one soil scan; returns `201` and the scan with generated `id` and `received_at`.
+- `POST /api/v1/scans/batch` — atomically validate and persist between 1 and 50 scans; returns `201` with `items` and `count`. If any item is invalid, no records are written. If persistence fails, the transaction rolls back.
 - `GET /api/v1/weather?latitude=26.75&longitude=94.63` — fetch current conditions from Open-Meteo; reports `available`, `stale`, or `unavailable` and never fabricates values.
 - `GET /api/v1/scans?limit=50&offset=0` — newest-first scan history with `items`, `total`, `limit`, and `offset`.
 - `GET /api/v1/scans/{scan_id}` — one stored scan, or `404`.
@@ -18,6 +19,10 @@ Interactive OpenAPI documentation is served at `/docs` when the app is running.
 `source` is required and must be `simulated` or `physical`. `timestamp` must be ISO 8601 with timezone information. `location` is optional and contains latitude and longitude. Optional `agricultural_context` can contain `region`, `season`, and `water_availability` for crop-rule matching. The four measurement objects are `soil_moisture`, `soil_temperature`, `ph`, and `ec`; each has `value` (nullable number), `unit`, `status` (`valid`, `invalid`, or `unavailable`), `calibrated` (nullable boolean), and optional timezone-aware `observed_at`. Missing measurement objects default to unavailable, not zero. Unknown fields are rejected.
 
 Suggested units are `%`, `°C`, `pH`, and `mS/cm`; the API records the supplied unit and does not silently convert it. The robot agent must confirm exact sensor output units before hardware integration.
+
+## Batch ingestion
+
+Use batch ingestion when the robot has buffered readings while offline and later reconnects. Send a JSON array of 1–50 regular scan payloads to `POST /api/v1/scans/batch`. Each payload is validated before the handler runs, and database writes are transactional. A batch does not yet provide client-supplied idempotency keys: clients should not assume retrying the same batch is deduplicated, because each accepted scan receives a server-generated ID.
 
 ## Analysis limitations
 

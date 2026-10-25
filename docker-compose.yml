@@ -1,0 +1,18 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      SSMR_DATABASE_PATH: /app/data/soil_scans.sqlite3
+      SSMR_CORS_ORIGINS: ${SSMR_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      # Optional: mount a reviewed rules file and set SSMR_CROP_RULES_PATH.
+      # SSMR_CROP_RULES_PATH: /app/config/crop_rules.json
+    volumes:
+      - ssmr_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  ssmr_data:

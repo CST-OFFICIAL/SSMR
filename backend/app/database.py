@@ -35,10 +35,31 @@ def init_db() -> None:
 
 
 def insert_scan(scan_id: str, timestamp: str, received_at: str, source: str, payload: dict[str, Any]) -> None:
+    insert_scans([{
+        "id": scan_id,
+        "timestamp": timestamp,
+        "received_at": received_at,
+        "source": source,
+        "payload": payload,
+    }])
+
+
+def insert_scans(scans: list[dict[str, Any]]) -> None:
+    """Persist a batch atomically: either every scan is inserted or none are."""
+    rows = [
+        (
+            scan["id"],
+            scan["timestamp"],
+            scan["received_at"],
+            scan["source"],
+            json.dumps(scan["payload"], separators=(",", ":")),
+        )
+        for scan in scans
+    ]
     with connect() as conn:
-        conn.execute(
+        conn.executemany(
             "INSERT INTO soil_scans(id, timestamp, received_at, source, payload_json) VALUES (?, ?, ?, ?, ?)",
-            (scan_id, timestamp, received_at, source, json.dumps(payload, separators=(",", ":"))),
+            rows,
         )
 
 
