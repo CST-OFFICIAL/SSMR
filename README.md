@@ -4,9 +4,9 @@ SSMR is a prototype intended to collect soil measurements, report data quality, 
 
 ## Project status
 
-**Prototype / in development.** The backend MVP was merged via [PR #1](https://github.com/CST-OFFICIAL/SSMR/pull/1). Batch scan ingestion, expanded backend tests, CI, Docker setup, and integration documentation were merged via [PR #4](https://github.com/CST-OFFICIAL/SSMR/pull/4). GitHub Actions run 27 completed successfully, including the backend test suite and Docker image build.
+**Prototype / in development.** The backend MVP was merged via [PR #1](https://github.com/CST-OFFICIAL/SSMR/pull/1). Batch scan ingestion, expanded tests, CI, and Docker setup were merged via [PR #4](https://github.com/CST-OFFICIAL/SSMR/pull/4). Safe retries for buffered batch uploads were added in [PR #5](https://github.com/CST-OFFICIAL/SSMR/pull/5). GitHub Actions runs 27 and 31 completed successfully, each including the backend test suite and Docker image build.
 
-- Backend: FastAPI, SQLite persistence, measurement-quality analysis, weather lookup, configurable cited crop rules, and buffered batch ingestion.
+- Backend: FastAPI, SQLite persistence, measurement-quality analysis, weather lookup, configurable cited crop rules, batch ingestion, and optional idempotency keys for batch retries.
 - Robot/hardware: Raspberry Pi sensor readers, calibration, and robot movement are separate work and are not claimed as integrated yet.
 - Frontend: dashboard is separate and should use `backend/docs/INTEGRATION_CONTRACT.md` as the current hand-off contract.
 
@@ -40,7 +40,7 @@ Open `http://127.0.0.1:8000/docs`. SQLite data is stored in the named volume `ss
 
 - `GET /health`
 - `POST /api/v1/scans` — submit one scan
-- `POST /api/v1/scans/batch` — atomically submit 1–50 buffered scans
+- `POST /api/v1/scans/batch` — atomically submit 1–50 buffered scans; optionally send `Idempotency-Key`
 - `GET /api/v1/scans?limit=50&offset=0`
 - `GET /api/v1/scans/{scan_id}`
 - `GET /api/v1/scans/{scan_id}/analysis`
@@ -56,7 +56,7 @@ See [API reference](backend/docs/API.md) and [cross-agent integration contract](
 - The backend does not infer nitrogen, phosphorus, potassium, or yield from pH, moisture, temperature, or electrical conductivity.
 - Crop recommendations are disabled until applicable, reviewed, cited crop rules are configured.
 - Weather data may be unavailable or stale; consumers should display that status.
-- Batch ingestion has no idempotency key yet; clients should not assume a retry will be deduplicated.
+- Batch retries are deduplicated only when the caller sends the same `Idempotency-Key` with the same payload. Reusing a key with different content returns HTTP `409`.
 
 ## Branch and integration workflow
 
