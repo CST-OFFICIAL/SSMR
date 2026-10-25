@@ -4,9 +4,9 @@ SSMR is a prototype intended to collect soil measurements, report data quality, 
 
 ## Project status
 
-**Prototype / in development.** The backend MVP is merged into `main` via [PR #1](https://github.com/CST-OFFICIAL/SSMR/pull/1). Follow-up Docker development setup and expanded backend tests are proposed in [PR #4](https://github.com/CST-OFFICIAL/SSMR/pull/4). Check its Checks/Actions status before merging; no passing test run has been verified in this development session.
+**Prototype / in development.** The backend MVP was merged via [PR #1](https://github.com/CST-OFFICIAL/SSMR/pull/1). Batch scan ingestion, expanded backend tests, CI, Docker setup, and integration documentation were merged via [PR #4](https://github.com/CST-OFFICIAL/SSMR/pull/4). GitHub Actions run 27 completed successfully, including the backend test suite and Docker image build.
 
-- Backend: FastAPI, SQLite persistence, measurement-quality analysis, weather lookup, configurable cited crop rules, and buffered batch ingestion on the development branch.
+- Backend: FastAPI, SQLite persistence, measurement-quality analysis, weather lookup, configurable cited crop rules, and buffered batch ingestion.
 - Robot/hardware: Raspberry Pi sensor readers, calibration, and robot movement are separate work and are not claimed as integrated yet.
 - Frontend: dashboard is separate and should use `backend/docs/INTEGRATION_CONTRACT.md` as the current hand-off contract.
 
