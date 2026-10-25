@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from .schemas import AnalysisResult, MeasurementStatus, SoilScan
+from .schemas import AnalysisResult, MeasurementStatus, SoilScan\nfrom .crop_rules import rank_crops
 
 
 def analyze_scan(scan: SoilScan) -> AnalysisResult:
