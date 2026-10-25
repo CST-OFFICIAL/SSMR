@@ -1,16 +1,16 @@
 # Smart Soil Monitoring Robot (SSMR)
 
-SSMR is a prototype project intended to collect soil measurements, report data quality, and present transparent soil analysis through a dashboard. The project is being developed in separate components so hardware, backend, and frontend work can proceed independently.
+SSMR is a prototype intended to collect soil measurements, report data quality, and expose analysis through a dashboard. Hardware, backend, and frontend work are developed separately and integrated through pull requests.
 
 ## Project status
 
-**Prototype / in development.** The backend MVP is on the `agent/backend-analysis` branch and proposed in [Pull Request #1](https://github.com/CST-OFFICIAL/SSMR/pull/1). It has not been merged into `main`. Backend tests have been added, and GitHub Actions is configured to run them on relevant pushes and pull requests; check the Actions tab for the actual run result.
+**Prototype / in development.** The backend MVP is merged into `main` via [PR #1](https://github.com/CST-OFFICIAL/SSMR/pull/1). Follow-up CI, validation tests, integration docs, and container setup are being proposed in [PR #3](https://github.com/CST-OFFICIAL/SSMR/pull/3). Check its Checks/Actions status before merging; no passing test run has been verified in this development session.
 
-- Backend: FastAPI API, SQLite persistence, measurement-quality analysis, weather lookup, configurable cited crop rules.
-- Robot/hardware: Raspberry Pi sensor readers, calibration, and movement are separate work and are not claimed as integrated by the backend.
-- Frontend: dashboard work is separate and must use the API contract documented in `backend/docs/INTEGRATION_CONTRACT.md`.
+- Backend: FastAPI, SQLite persistence, measurement-quality analysis, weather lookup, configurable cited crop rules.
+- Robot/hardware: Raspberry Pi sensor readers, calibration, and robot movement are separate work and are not claimed as integrated yet.
+- Frontend: dashboard is separate and should use `backend/docs/INTEGRATION_CONTRACT.md` as the current hand-off contract.
 
-## Backend quick start
+## Run backend locally with Python
 
 Requires Python 3.11 or newer.
 
@@ -24,7 +24,17 @@ python -m pytest -q
 uvicorn app.main:app --reload
 ```
 
-Then open `http://127.0.0.1:8000/docs`.
+Open `http://127.0.0.1:8000/docs` for interactive API docs.
+
+## Run with Docker Compose
+
+From the repository root, with Docker Desktop or Docker Engine plus Compose installed:
+
+```bash
+docker compose up --build
+```
+
+Open `http://127.0.0.1:8000/docs`. SQLite data is stored in the named volume `ssmr_data`. Stop the service with Ctrl+C; use `docker compose down` to remove containers (the named data volume remains unless explicitly removed).
 
 ## API endpoints
 
