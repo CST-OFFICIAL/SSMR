@@ -15,7 +15,7 @@ Interactive OpenAPI documentation is served at `/docs` when the app is running.
 
 ## Scan payload
 
-`source` is required and must be `simulated` or `physical`. `timestamp` must be ISO 8601 with timezone information. `location` is optional and contains latitude and longitude. The four measurement objects are `soil_moisture`, `soil_temperature`, `ph`, and `ec`; each has `value` (nullable number), `unit`, `status` (`valid`, `invalid`, or `unavailable`), `calibrated` (nullable boolean), and optional timezone-aware `observed_at`. Missing measurement objects default to unavailable, not zero. Unknown fields are rejected.
+`source` is required and must be `simulated` or `physical`. `timestamp` must be ISO 8601 with timezone information. `location` is optional and contains latitude and longitude. Optional `agricultural_context` can contain `region`, `season`, and `water_availability` for crop-rule matching. The four measurement objects are `soil_moisture`, `soil_temperature`, `ph`, and `ec`; each has `value` (nullable number), `unit`, `status` (`valid`, `invalid`, or `unavailable`), `calibrated` (nullable boolean), and optional timezone-aware `observed_at`. Missing measurement objects default to unavailable, not zero. Unknown fields are rejected.
 
 Suggested units are `%`, `°C`, `pH`, and `mS/cm`; the API records the supplied unit and does not silently convert it. The robot agent must confirm exact sensor output units before hardware integration.
 
@@ -25,6 +25,7 @@ Analysis currently evaluates availability/status/calibration flags and emits war
 
 ## Configuration
 
+- `SSMR_CROP_RULES_PATH` — optional path to a JSON array of cited crop rules. No production rules are bundled, so recommendations are disabled by default. See `backend/data/README.md` and `backend/data/crop_rules.example.json`.
 - `SSMR_DATABASE_PATH` — optional SQLite file path. Defaults to `backend/data/soil_scans.sqlite3`.
 - Weather requests use a 5-second timeout. `stale` is true when the provider timestamp is more than two hours old or more than 15 minutes in the future. A failed request returns an explicit unavailable response.
 - `SSMR_CORS_ORIGINS` — comma-separated browser origins. Defaults to local Vite origins `http://localhost:5173,http://127.0.0.1:5173`.
