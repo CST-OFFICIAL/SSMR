@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from uuid import uuid4
+import hashlib
+import json
 import os
 
-from fastapi import FastAPI, HTTPException, Query, status
+from fastapi import FastAPI, Header, HTTPException, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
@@ -15,7 +17,7 @@ from .weather import get_weather
 
 app = FastAPI(
     title="Smart Soil Monitoring Robot API",
-    version="0.2.0",
+    version="0.3.0",
     description="Laptop-first API for soil scans, scan history, and transparent measurement-quality analysis.",
 )
 # CORS origins are configurable; localhost defaults support laptop development.
@@ -32,7 +34,7 @@ app.add_middleware(
     allow_origins=_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "Idempotency-Key"],
 )
 
 
@@ -65,8 +67,12 @@ def create_scan(payload: SoilScanCreate) -> SoilScan:
 
 
 @app.post("/api/v1/scans/batch", status_code=status.HTTP_201_CREATED)
-def create_scans_batch(payloads: list[SoilScanCreate]) -> dict[str, object]:
-    """Atomically ingest 1–50 buffered scans from a device or offline queue."""
+def create_scans_batch(
+    payloads: list[SoilScanCreate],
+    response: Response,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", min_length=8, max_length=128),
+) -> dict[str, object]:
+    """Atomically ingest 1–50 buffered scans; optional key safely deduplicates retries."""
     if not 1 <= len(payloads) <= 50:
         raise HTTPException(status_code=422, detail="Batch must contain between 1 and 50 scans")
 
@@ -85,13 +91,38 @@ def create_scans_batch(payloads: list[SoilScanCreate]) -> dict[str, object]:
         }
         for scan in scans
     ]
+    response_body = {
+        "items": [scan.model_dump(mode="json") for scan in scans],
+        "count": len(scans),
+    }
+
     try:
+        if idempotency_key:
+            canonical_payload = json.dumps(
+                [payload.model_dump(mode="json") for payload in payloads],
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            request_hash = hashlib.sha256(canonical_payload.encode("utf-8")).hexdigest()
+            replayed, stored_body = database.insert_scans_idempotent(
+                records,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_body=response_body,
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+            response.headers["Idempotency-Replayed"] = "true" if replayed else "false"
+            return stored_body
+
         database.insert_scans(records)
+    except database.IdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
-        # The transaction in insert_scans rolls back the entire batch on failure.
+        # The transaction in the database layer rolls back the entire batch.
         raise HTTPException(status_code=500, detail="Could not persist scan batch") from exc
 
-    return {"items": scans, "count": len(scans)}
+    response.headers["Idempotency-Replayed"] = "false"
+    return response_body
 
 
 @app.get("/api/v1/weather")
