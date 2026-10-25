@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from . import database
 from .analysis import analyze_scan
 from .schemas import AnalysisResult, SoilScan, SoilScanCreate
+from .weather import get_weather
 
 app = FastAPI(
     title="Smart Soil Monitoring Robot API",
@@ -51,6 +52,11 @@ def create_scan(payload: SoilScanCreate) -> SoilScan:
         # Keep implementation details out of API responses.
         raise HTTPException(status_code=500, detail="Could not persist scan") from exc
     return scan
+
+@app.get("/api/v1/weather")
+async def weather_for_location(latitude: float = Query(ge=-90, le=90), longitude: float = Query(ge=-180, le=180)) -> dict[str, object]:
+    """Fetch current conditions from Open-Meteo; unavailable data stays explicitly unavailable."""
+    return await get_weather(latitude, longitude)
 
 @app.get("/api/v1/scans")
 def scan_history(
