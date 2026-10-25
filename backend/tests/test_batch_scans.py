@@ -1,3 +1,6 @@
+import sqlite3
+
+import pytest
 from fastapi.testclient import TestClient
 
 from app import database
@@ -74,11 +77,8 @@ def test_batch_insert_rolls_back_every_item_on_database_error(tmp_path, monkeypa
         "source": "simulated",
         "payload": {"id": "should-roll-back"},
     }
-    try:
+    with pytest.raises(sqlite3.IntegrityError):
         database.insert_scans([new_record, existing])
-        assert False, "Expected duplicate primary key to fail"
-    except Exception:
-        pass
 
     assert database.get_scan("should-roll-back") is None
     assert database.get_scan("already-exists") is not None
